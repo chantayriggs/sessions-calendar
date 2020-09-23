@@ -1,0 +1,236 @@
+<!-- 
+
+
+TO RUN THIS, START SERVER WITH
+    python3 -m http.server 8000   
+GO TO LOCALHOST:8000
+AUTHORIZE
+
+
+
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Mentor Sessions</title>
+<meta charset="utf-8" />
+</head>
+<style>
+
+     body {
+        background-color: black;
+        color: white;
+        font-family:'Roboto',sans-serif;
+        font-weight:300;
+    }
+    .page-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+    .right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        padding: 20px 20px 0px 0px;
+    }
+    .left {
+        padding-left: 80px;
+    }
+
+    button {
+        display:inline-block;
+        padding:0.35em 1.2em;
+        border:0.1em solid #FFFFFF;
+        margin:0 0.3em 0.3em 0;
+        border-radius:0.12em;
+        box-sizing: border-box;
+        text-decoration:none;
+        background-color: #000000;
+        color:#FFFFFF;
+        text-align:center;
+        transition: all 0.2s;
+    }
+    button:hover{
+        color:#000000;
+        background-color:#FFFFFF;
+        cursor: pointer;
+    }
+</style>
+<body>
+    <div class="page-wrapper">
+        <div class="left">
+            <h2 id="todaysDate"></h2>
+            <p id="getting"></p>
+            <pre id="content" style="white-space: pre-wrap;"></pre>
+        </div>
+        <div class="right">
+            <button id="authorize_button" style="display: none;">Authorize</button>
+            <button id="signout_button" style="display: none;">Sign Out</button>
+        </div>
+    </div>
+
+<script>
+    let date = document.getElementById("todaysDate")
+    let getDate = new Date().toString().slice(0, 10)
+    date.innerHTML = getDate
+</script>
+
+<script type="text/javascript">
+
+    let getting = document.getElementById("getting")
+
+    // Client ID and API key from the Developer Console
+    let CLIENT_ID = '832655282780-b8fvfi9nfhamjv4gp77v400og2c2f0fk.apps.googleusercontent.com';
+    let API_KEY = 'AIzaSyDFXvtnMB2g5o8aWf_EUvjA0q2A--bsHrs';
+
+    // Array of API discovery doc URLs for APIs used by the quickstart
+    let DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"];
+
+    // Authorization scopes required by the API; multiple scopes can be
+    // included, separated by spaces.
+    let SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
+
+    let authorizeButton = document.getElementById('authorize_button');
+    let signoutButton = document.getElementById('signout_button');
+
+    /**
+     *  On load, called to load the auth2 library and API client library.
+     */
+    handleClientLoad = () => {
+        getting.innerHTML= "Getting sessions..."
+        gapi.load('client:auth2', initClient);
+    }
+
+    /**
+     *  Initializes the API client library and sets up sign-in state
+     *  listeners.
+     */
+    initClient = () => {
+        gapi.client.init({
+            apiKey: API_KEY,
+            clientId: CLIENT_ID,
+            discoveryDocs: DISCOVERY_DOCS,
+            scope: SCOPES
+        }).then(() => {
+            // Listen for sign-in state changes.
+            gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+
+            // Handle the initial sign-in state.
+            updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+            authorizeButton.onclick = handleAuthClick;
+            signoutButton.onclick = handleSignoutClick;
+        }, error => {
+            appendPre(JSON.stringify(error, null, 2));
+        });
+    }
+
+    /**
+     *  Called when the signed in status changes, to update the UI
+     *  appropriately. After a sign-in, the API is called.
+     */
+    updateSigninStatus = isSignedIn => {
+        if (isSignedIn) {
+            authorizeButton.style.display = 'none';
+            signoutButton.style.display = 'block';
+            listUpcomingEvents();
+        } else {
+            authorizeButton.style.display = 'block';
+            signoutButton.style.display = 'none';
+        }
+    }
+
+    handleAuthClick = event => {
+        gapi.auth2.getAuthInstance().signIn();
+    }
+
+    handleSignoutClick = event => {
+        gapi.auth2.getAuthInstance().signOut();
+    }
+
+    /**
+     * Append a pre element to the body containing the given message
+     * as its text node. Used to display the results of the API call.
+     *
+     * @param {string} message Text to be placed in pre element.
+     */
+    appendPre = message => {
+        let pre = document.getElementById('content');
+        let textContent = document.createTextNode(message + '\n');
+        pre.appendChild(textContent);
+    }
+
+
+    listUpcomingEvents = () => {
+        gapi.client.calendar.events.list({
+            'calendarId': 'mentor@bottega.tech',
+            'timeMin': (new Date()).toISOString(),
+            'showDeleted': false,
+            'singleEvents': true,
+            'maxResults': 150,
+            'orderBy': 'startTime'
+        }).then(response => {
+            let events = response.result.items;
+            appendPre('Upcoming events: \n\n');
+
+            if (events.length > 0) {
+                for (i = 0; i < events.length; i++) {
+
+                    let event = events[i];
+                    let when = event.start.dateTime;
+                    if (!when) {
+                        when = event.start.date;
+                    }
+
+                    timeConverter = time => {
+                        let s = time.slice(0, 2)
+                        let e = time.slice(3)
+                        if (s == "13") return "1" + e + "pm "
+                        if (s == "14") return "2" + e + "pm "
+                        if (s == "15") return "3" + e + "pm "
+                        if (s == "16") return "4" + e + "pm "
+                        if (s == "17") return "5" + e + "pm "
+                        if (s == "18") return "6" + e + "pm "
+                        if (s == "19") return "7" + e + "pm "
+                        if (s == "20") return "8" + e + "pm "
+                        if (s == "21") return "9" + e + "pm "
+                        if (s == "22") return "10" + e + "pm "
+                        if (s == "23") return "11" + e + "pm "
+                        if (s == "12") return s + e + "pm "
+                        if (time[0] == "0") return time[1] + e + "am "
+                        else return s + e + "am "
+                    }
+
+                    if (
+                            event.summary.includes("Mentor") 
+                            || event.summary.includes("session") 
+                            || event.summary.includes("Session")
+                            || event.summary.includes("mentor")
+                        ){
+                        event.summary = event.summary.slice(0, -14)
+                        when = when.slice(11, -9)
+                        convertedTime = timeConverter(when)
+                        appendPre(convertedTime + event.summary)
+                    } else {
+                        when = when.slice(11, -9)
+                        convertedTime = timeConverter(when)
+                        appendPre(convertedTime + event.summary)
+                    }
+
+                    getting.innerHTML = ""
+
+                }
+            } else {
+            appendPre('No upcoming events found.')
+            }
+        })
+    }
+
+</script>
+
+<script async defer src="https://apis.google.com/js/api.js"
+    onload="this.onload=function(){};handleClientLoad()"
+    onreadystatechange="if (this.readyState === 'complete') this.onload()">
+</script>
+</body>
+</html>
